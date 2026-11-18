@@ -68,6 +68,18 @@ class ScoreRecord(Base):
     total_score: Mapped[float] = mapped_column(Float)
     note: Mapped[str] = mapped_column(Text, default="")
 
+
+class PortfolioSnapshot(Base):
+    __tablename__ = "portfolio_snapshots"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    date: Mapped[str] = mapped_column(String(10), unique=True, index=True)
+    total_assets: Mapped[float] = mapped_column(Float)
+    current_gold_value: Mapped[float] = mapped_column(Float)
+    max_gold_allocation: Mapped[float] = mapped_column(Float)
+    remaining_budget: Mapped[float] = mapped_column(Float)
+    note: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
+
 class CollectionLog(Base):
     __tablename__ = "collection_logs"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)

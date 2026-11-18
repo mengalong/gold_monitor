@@ -10,6 +10,7 @@ from reporting import generate_weekly_report
 from config import REPORTS_DIR, validate_settings
 from instruments import DOLLAR_INDEX, GOLD_FUTURES, SGE_AU9999, USD_CNY
 from data_quality import assess_core_data_quality, collect_freshness
+from portfolio import PortfolioContext, latest_portfolio, save_portfolio
 
 st.set_page_config(page_title="Gold Monitor", page_icon="🟡", layout="wide")
 setting_errors = validate_settings()
@@ -123,6 +124,55 @@ with tabs[3]:
 
 with tabs[4]:
     st.subheader("数据导入与采集日志")
+    st.markdown("#### 个人黄金配置")
+    saved_portfolio = latest_portfolio()
+    with st.form("portfolio_form"):
+        p1, p2 = st.columns(2)
+        total_assets = p1.number_input(
+            "金融资产总额（元）",
+            min_value=0.0,
+            value=float(saved_portfolio.total_assets if saved_portfolio else 0),
+            step=10_000.0,
+        )
+        current_gold = p2.number_input(
+            "当前黄金市值（元）",
+            min_value=0.0,
+            value=float(saved_portfolio.current_gold_value if saved_portfolio else 0),
+            step=1_000.0,
+        )
+        max_allocation_pct = p1.number_input(
+            "黄金配置上限（%）",
+            min_value=0.1,
+            max_value=100.0,
+            value=float(saved_portfolio.max_gold_allocation * 100 if saved_portfolio else 15.0),
+            step=0.5,
+        )
+        remaining_budget = p2.number_input(
+            "剩余黄金预算（元）",
+            min_value=0.0,
+            value=float(saved_portfolio.remaining_budget if saved_portfolio else 0),
+            step=1_000.0,
+        )
+        if st.form_submit_button("保存今日持仓快照"):
+            context = PortfolioContext(
+                total_assets=total_assets,
+                current_gold_value=current_gold,
+                max_gold_allocation=max_allocation_pct / 100,
+                remaining_budget=remaining_budget,
+            )
+            errors = context.validate()
+            if errors:
+                for error in errors:
+                    st.error(error)
+            else:
+                save_portfolio(context)
+                st.success("今日持仓快照已保存")
+                st.rerun()
+    if saved_portfolio:
+        st.caption(
+            f"当前黄金占比 {saved_portfolio.current_allocation:.2%}；"
+            f"距配置上限仍可增加 ¥{saved_portfolio.allocation_headroom:,.0f}。"
+        )
     quality = assess_core_data_quality()
     freshness = collect_freshness()
     freshness_labels = {"fresh": "正常", "stale": "过期", "missing": "缺失"}
