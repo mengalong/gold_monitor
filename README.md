@@ -34,6 +34,8 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
+项目通过 `.python-version` 固定 Python 主次版本为 3.12。`requirements.txt` 维护运行时直接依赖的兼容范围，`requirements-dev.txt` 维护测试依赖；在数据源和核心模块稳定后再生成完整锁定文件，避免当前快速迭代阶段频繁提交大量传递依赖变更。
+
 在 https://fred.stlouisfed.org/docs/api/api_key.html 申请 FRED API Key，将其填入 `.env` 的 `FRED_API_KEY`。
 
 ## 启动
