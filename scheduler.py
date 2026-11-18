@@ -5,7 +5,7 @@ from database import init_db
 from collectors import run_daily_update
 from analytics import build_score
 from reporting import generate_weekly_report
-from config import REPORTS_DIR, TIMEZONE
+from config import REPORTS_DIR, TIMEZONE, ensure_valid_settings
 
 def daily_job():
     print("开始执行每日黄金数据更新")
@@ -24,6 +24,7 @@ def weekly_job():
     print(f"周报已保存：{path}")
 
 if __name__ == "__main__":
+    ensure_valid_settings()
     init_db()
     scheduler = BlockingScheduler(timezone=TIMEZONE)
     scheduler.add_job(daily_job, CronTrigger(hour=8, minute=0), id="daily_update", max_instances=1, coalesce=True)

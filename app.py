@@ -7,9 +7,14 @@ from analytics import quotes_df, macro_df, imported_df, calculate_domestic_theor
 from indicators import add_technical_indicators
 from collectors import run_daily_update
 from reporting import generate_weekly_report
-from config import REPORTS_DIR
+from config import REPORTS_DIR, validate_settings
 
 st.set_page_config(page_title="Gold Monitor", page_icon="🟡", layout="wide")
+setting_errors = validate_settings()
+if setting_errors:
+    for error in setting_errors:
+        st.error(error)
+    st.stop()
 init_db()
 
 st.title("🟡 Gold Monitor")
