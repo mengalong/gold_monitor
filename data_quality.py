@@ -32,7 +32,7 @@ class FreshnessResult:
 DEFAULT_FRESHNESS_RULES = (
     FreshnessRule("market", GOLD_FUTURES, "COMEX黄金期货", 3),
     FreshnessRule("market", DOLLAR_INDEX, "美元指数", 3),
-    FreshnessRule("market", USD_CNY, "USD/CNY", 3),
+    FreshnessRule("market", USD_CNY, "USD/CNY", 9),
     FreshnessRule("market", SGE_AU9999, "上金所 Au99.99", 3),
     FreshnessRule("macro", "DFII10", "美国10年期实际利率", 4),
     FreshnessRule("macro", "DGS10", "美国10年期名义利率", 4),

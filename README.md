@@ -10,7 +10,7 @@
 ## 已实现
 - 国际黄金（GC=F）行情采集：通过 Yahoo Finance/yfinance；数据可用性受第三方服务限制。
 - 美元指数（DX-Y.NYB）行情采集（如数据源可用）。
-- USD/CNY 汇率行情采集（CNY=X，作为参考行情，需与正式结算汇率区分）。
+- USD/CNY 汇率优先采集 Yahoo Finance 参考行情，失败时降级到 FRED `DEXCHUS` 官方序列。
 - 上海黄金交易所 Au99.99 官方日行情采集，按月拆分并自动处理分页。
 - FRED 宏观序列采集：DFII10、DGS10、CPIAUCSL、PCEPILFE；需要 FRED API Key。
 - SQLite 原始行情、宏观数据、指标、评分、采集日志持久化。

@@ -5,7 +5,7 @@ from sqlalchemy import select
 from database import SessionLocal, MarketQuote, MacroIndicator, CollectionLog
 from config import FRED_API_KEY
 from instruments import DOLLAR_INDEX, GOLD_FUTURES, SGE_AU9999, USD_CNY
-from market_data import MarketDataProviderChain, YahooFinanceProvider
+from market_data import FREDMarketProvider, MarketDataProviderChain, YahooFinanceProvider
 from security import redact_secrets
 from sge_data import fetch_sge_daily
 
@@ -22,7 +22,10 @@ FRED_SERIES = {
 }
 
 DEFAULT_MARKET_PROVIDER_CHAIN = MarketDataProviderChain(
-    [YahooFinanceProvider(YAHOO_SYMBOLS)]
+    [
+        YahooFinanceProvider(YAHOO_SYMBOLS),
+        FREDMarketProvider({USD_CNY: "DEXCHUS"}, FRED_API_KEY),
+    ]
 )
 
 def _log(task, status, message):
