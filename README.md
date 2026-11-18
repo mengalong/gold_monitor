@@ -2,6 +2,11 @@
 
 第一版 MVP：Python 3.12 + Streamlit + SQLite + SQLAlchemy + Plotly。
 
+## 项目文档
+
+- [系统设计](docs/SYSTEM_DESIGN.md)
+- [开发路线](docs/DEVELOPMENT_PLAN.md)
+
 ## 已实现
 - 国际黄金（GC=F）行情采集：通过 Yahoo Finance/yfinance；数据可用性受第三方服务限制。
 - 美元指数（DX-Y.NYB）行情采集（如数据源可用）。
