@@ -7,4 +7,3 @@ data/*.db
 logs/*.log
 reports/*.md
 .streamlit/
-.env.example

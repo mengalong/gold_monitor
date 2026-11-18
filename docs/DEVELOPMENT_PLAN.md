@@ -3,7 +3,7 @@
 ## 阶段 0：安全和工程基础
 
 - [ ] 修复采集异常中的 API Key 泄露风险；
-- [ ] 补充可提交的 `.env.example`；
+- [x] 补充可提交的 `.env.example`；
 - [ ] 增加配置校验；
 - [ ] 建立 pytest 测试目录；
 - [ ] 建立 GitHub Actions 持续集成；
