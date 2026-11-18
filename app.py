@@ -21,8 +21,74 @@ if setting_errors:
     st.stop()
 init_db()
 
-st.title("🟡 Gold Monitor")
-st.caption("黄金市场持续监测系统 · MVP · Python 3.12 / SQLite")
+st.markdown(
+    """
+    <style>
+    .gold-monitor-title {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        margin: 0.2rem 0 0.35rem;
+        color: #262730;
+        font-size: 2.15rem;
+        font-weight: 700;
+        line-height: 1.15;
+    }
+    .gold-monitor-title__dot {
+        width: 1.7rem;
+        height: 1.7rem;
+        flex: 0 0 1.7rem;
+        border-radius: 50%;
+        background: #ffc400;
+        border: 1px solid #d99c00;
+    }
+    .gold-monitor-subtitle {
+        margin: 0 0 1.25rem;
+        color: #7b7f87;
+        font-size: 0.88rem;
+    }
+    .st-key-advice_panel h2,
+    .st-key-advice_panel h3 {
+        margin: 0.2rem 0 0.65rem;
+        font-size: 1.45rem;
+        line-height: 1.25;
+    }
+    .st-key-advice_panel [data-testid="stAlert"] {
+        padding: 0.7rem 0.9rem;
+    }
+    .st-key-advice_panel [data-testid="stAlert"] p {
+        font-size: 0.95rem;
+    }
+    .st-key-advice_panel [data-testid="stMetricLabel"] p {
+        font-size: 0.82rem;
+    }
+    .st-key-advice_panel [data-testid="stMetricValue"] {
+        font-size: 1.65rem;
+        line-height: 1.15;
+    }
+    .st-key-advice_panel [data-testid="stMetricDelta"] {
+        font-size: 0.75rem;
+    }
+    .st-key-advice_panel [data-testid="stCaptionContainer"] p {
+        font-size: 0.78rem;
+        line-height: 1.4;
+    }
+    .st-key-advice_panel p,
+    .st-key-advice_panel li {
+        font-size: 0.9rem;
+    }
+    .st-key-advice_panel [data-testid="stVerticalBlock"] {
+        gap: 0.65rem;
+    }
+    </style>
+    <div class="gold-monitor-title">
+        <span class="gold-monitor-title__dot"></span>
+        <span>Gold Monitor</span>
+    </div>
+    <div class="gold-monitor-subtitle">黄金市场持续监测系统 · MVP · Python 3.12 / SQLite</div>
+    """,
+    unsafe_allow_html=True,
+)
 
 with st.sidebar:
     st.header("控制面板")
@@ -41,56 +107,57 @@ with st.sidebar:
         st.success(f"报告已生成：{path.name}")
         st.download_button("下载周报 Markdown", report, file_name="gold_weekly_report.md")
 
-advice, core_signals, advice_quality = generate_current_advice()
-st.subheader("今日投资建议")
-if advice.action == "暂停加仓":
-    st.error(f"当前建议：{advice.action}")
-elif advice.action == "持有观察":
-    st.warning(f"当前建议：{advice.action}")
-else:
-    st.success(f"当前建议：{advice.action}，建议金额 ¥{advice.suggested_amount:,.0f}")
+with st.container(key="advice_panel"):
+    advice, core_signals, advice_quality = generate_current_advice()
+    st.subheader("今日投资建议")
+    if advice.action == "暂停加仓":
+        st.error(f"当前建议：{advice.action}")
+    elif advice.action == "持有观察":
+        st.warning(f"当前建议：{advice.action}")
+    else:
+        st.success(f"当前建议：{advice.action}，建议金额 ¥{advice.suggested_amount:,.0f}")
 
-a1, a2, a3, a4 = st.columns(4)
-a1.metric("建议动作", advice.action)
-a2.metric("建议金额", f"¥{advice.suggested_amount:,.0f}")
-a3.metric("数据与信号完整度", f"{advice.confidence:.1f}%")
-a4.metric("规则版本", advice.rule_version, advice.data_date or "暂无数据日期")
+    a1, a2, a3, a4 = st.columns(4)
+    a1.metric("建议动作", advice.action)
+    a2.metric("建议金额", f"¥{advice.suggested_amount:,.0f}")
+    a3.metric("数据与信号完整度", f"{advice.confidence:.1f}%")
+    a4.metric("规则版本", advice.rule_version, advice.data_date or "暂无数据日期")
 
-direction_labels = {
-    "bullish": "🟢 偏多",
-    "neutral": "🟡 中性",
-    "bearish": "🔴 偏空",
-    "unavailable": "⚪ 不可用",
-}
-signal_columns = st.columns(5)
-for column, signal in zip(signal_columns, core_signals):
-    column.metric(signal.label, direction_labels[signal.direction])
-    column.caption(signal.reason)
+    direction_labels = {
+        "bullish": "🟢 偏多",
+        "neutral": "🟡 中性",
+        "bearish": "🔴 偏空",
+        "unavailable": "⚪ 不可用",
+    }
+    signal_columns = st.columns(5)
+    for column, signal in zip(signal_columns, core_signals):
+        column.metric(signal.label, direction_labels[signal.direction])
+        column.caption(signal.reason)
 
-r1, r2 = st.columns(2)
-with r1:
-    st.markdown("**主要理由**")
-    for reason in advice.reasons or ("当前没有可用理由",):
-        st.write(f"- {reason}")
-with r2:
-    st.markdown("**反对因素 / 缺失项**")
-    for factor in advice.opposing_factors or ("暂无",):
-        st.write(f"- {factor}")
-with st.expander("建议失效条件与审计信息"):
-    for condition in advice.invalidation_conditions:
-        st.write(f"- {condition}")
-    st.caption(
-        f"数据质量门：{'通过' if advice_quality.ready else '未通过'}；"
-        f"偏多 {advice.signal_counts['bullish']} / 中性 {advice.signal_counts['neutral']} / "
-        f"偏空 {advice.signal_counts['bearish']} / 不可用 {advice.signal_counts['unavailable']}。"
-    )
-if latest_portfolio() is None:
-    st.info("尚未配置个人持仓；即使出现买入信号，系统也会因无法验证配置上限而暂停加仓。请在“数据管理”页填写。")
-if st.button("保存今日正式建议"):
-    save_advice_snapshot(advice, core_signals)
-    st.success("今日信号与建议快照已保存")
+    r1, r2 = st.columns(2)
+    with r1:
+        st.markdown("**主要理由**")
+        for reason in advice.reasons or ("当前没有可用理由",):
+            st.write(f"- {reason}")
+    with r2:
+        st.markdown("**反对因素 / 缺失项**")
+        for factor in advice.opposing_factors or ("暂无",):
+            st.write(f"- {factor}")
+    with st.expander("建议失效条件与审计信息"):
+        for condition in advice.invalidation_conditions:
+            st.write(f"- {condition}")
+        st.caption(
+            f"数据质量门：{'通过' if advice_quality.ready else '未通过'}；"
+            f"偏多 {advice.signal_counts['bullish']} / 中性 {advice.signal_counts['neutral']} / "
+            f"偏空 {advice.signal_counts['bearish']} / 不可用 {advice.signal_counts['unavailable']}。"
+        )
+    if latest_portfolio() is None:
+        st.info("尚未配置个人持仓；即使出现买入信号，系统也会因无法验证配置上限而暂停加仓。请在“数据管理”页填写。")
+    if st.button("保存今日正式建议"):
+        save_advice_snapshot(advice, core_signals)
+        st.success("今日信号与建议快照已保存")
 
-st.divider()
+    st.divider()
 
 tabs = st.tabs(["市场总览", "宏观经济", "技术分析", "国内金价", "数据管理"])
 
