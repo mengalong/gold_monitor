@@ -1,11 +1,11 @@
 from datetime import date, timedelta
 import requests
 import pandas as pd
-import yfinance as yf
 from sqlalchemy import select
 from database import SessionLocal, MarketQuote, MacroIndicator, CollectionLog
 from config import FRED_API_KEY
 from instruments import DOLLAR_INDEX, GOLD_FUTURES, USD_CNY
+from market_data import MarketDataProviderChain, YahooFinanceProvider
 from security import redact_secrets
 
 YAHOO_SYMBOLS = {
@@ -20,6 +20,10 @@ FRED_SERIES = {
     "PCEPILFE": "index",
 }
 
+DEFAULT_MARKET_PROVIDER_CHAIN = MarketDataProviderChain(
+    [YahooFinanceProvider(YAHOO_SYMBOLS)]
+)
+
 def _log(task, status, message):
     with SessionLocal() as s:
         safe_message = redact_secrets(message, (FRED_API_KEY,))
@@ -30,31 +34,29 @@ def _log(task, status, message):
 def _safe_error(exc):
     return redact_secrets(exc, (FRED_API_KEY,))
 
-def fetch_yahoo_quotes(period="2y"):
+def fetch_market_quotes(period="2y", provider_chain=None):
+    provider_chain = provider_chain or DEFAULT_MARKET_PROVIDER_CHAIN
     results = {}
-    for symbol, ticker in YAHOO_SYMBOLS.items():
+    for symbol in YAHOO_SYMBOLS:
         try:
-            hist = yf.Ticker(ticker).history(period=period, interval="1d", auto_adjust=False)
-            if hist.empty:
-                raise RuntimeError(f"{ticker} returned no rows")
-            hist = hist.reset_index()
-            date_col = "Date" if "Date" in hist.columns else hist.columns[0]
+            market_data = provider_chain.fetch_daily(symbol, period)
+            history = market_data.frame
             with SessionLocal() as s:
-                for _, row in hist.iterrows():
-                    d = pd.Timestamp(row[date_col]).date().isoformat()
-                    close = row.get("Close")
+                for _, row in history.iterrows():
+                    d = str(row["date"])[:10]
+                    close = row.get("close")
                     if pd.isna(close):
                         continue
                     obj = s.scalar(select(MarketQuote).where(
                         MarketQuote.symbol == symbol, MarketQuote.date == d
                     ))
                     values = dict(
-                        open=None if pd.isna(row.get("Open")) else float(row.get("Open")),
-                        high=None if pd.isna(row.get("High")) else float(row.get("High")),
-                        low=None if pd.isna(row.get("Low")) else float(row.get("Low")),
+                        open=None if pd.isna(row.get("open")) else float(row.get("open")),
+                        high=None if pd.isna(row.get("high")) else float(row.get("high")),
+                        low=None if pd.isna(row.get("low")) else float(row.get("low")),
                         close=float(close),
-                        volume=None if pd.isna(row.get("Volume")) else float(row.get("Volume")),
-                        source=f"Yahoo Finance ({ticker})",
+                        volume=None if pd.isna(row.get("volume")) else float(row.get("volume")),
+                        source=market_data.source,
                     )
                     if obj:
                         for k, v in values.items():
@@ -62,13 +64,18 @@ def fetch_yahoo_quotes(period="2y"):
                     else:
                         s.add(MarketQuote(symbol=symbol, date=d, **values))
                 s.commit()
-            results[symbol] = f"成功：{len(hist)}条"
-            _log(f"yahoo:{symbol}", "success", results[symbol])
+            results[symbol] = f"成功：{len(history)}条，来源：{market_data.source}"
+            _log(f"market:{symbol}", "success", results[symbol])
         except Exception as exc:
             error = _safe_error(exc)
             results[symbol] = f"失败：{error}"
-            _log(f"yahoo:{symbol}", "error", error)
+            _log(f"market:{symbol}", "error", error)
     return results
+
+
+def fetch_yahoo_quotes(period="2y"):
+    """Backward-compatible wrapper for the original public function."""
+    return fetch_market_quotes(period=period)
 
 def fetch_fred_series():
     if not FRED_API_KEY:
@@ -107,6 +114,6 @@ def fetch_fred_series():
 
 def run_daily_update():
     result = {}
-    result.update(fetch_yahoo_quotes())
+    result.update(fetch_market_quotes())
     result.update(fetch_fred_series())
     return result
