@@ -5,8 +5,8 @@
 - [x] 修复采集异常中的 API Key 泄露风险；
 - [x] 补充可提交的 `.env.example`；
 - [x] 增加配置校验；
-- [ ] 建立 pytest 测试目录；
-- [ ] 建立 GitHub Actions 持续集成；
+- [x] 建立 pytest 测试目录；
+- [x] 建立 GitHub Actions 持续集成；
 - [ ] 确认 Python 3.12 安装和依赖锁定策略。
 
 ## 阶段 1：可靠的数据底座

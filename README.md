@@ -44,6 +44,17 @@ streamlit run app.py
 
 首次启动会自动创建 `data/gold_monitor.db` 数据库。
 
+## 测试
+
+安装开发依赖并运行测试：
+
+```bash
+pip install -r requirements-dev.txt
+pytest -q
+```
+
+每次推送和拉取请求都会通过 GitHub Actions 在 Python 3.12 环境执行语法检查和测试。
+
 ## 数据更新
 在侧边栏点击“立即更新行情与宏观数据”。也可以执行一次性更新：
 
