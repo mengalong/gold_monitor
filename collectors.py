@@ -5,6 +5,7 @@ import yfinance as yf
 from sqlalchemy import select
 from database import SessionLocal, MarketQuote, MacroIndicator, CollectionLog
 from config import FRED_API_KEY
+from security import redact_secrets
 
 YAHOO_SYMBOLS = {
     "XAUUSD": "GC=F",       # COMEX gold futures proxy, not spot XAU/USD
@@ -20,8 +21,13 @@ FRED_SERIES = {
 
 def _log(task, status, message):
     with SessionLocal() as s:
-        s.add(CollectionLog(task=task, status=status, message=str(message)[:4000]))
+        safe_message = redact_secrets(message, (FRED_API_KEY,))
+        s.add(CollectionLog(task=task, status=status, message=safe_message[:4000]))
         s.commit()
+
+
+def _safe_error(exc):
+    return redact_secrets(exc, (FRED_API_KEY,))
 
 def fetch_yahoo_quotes(period="2y"):
     results = {}
@@ -58,8 +64,9 @@ def fetch_yahoo_quotes(period="2y"):
             results[symbol] = f"成功：{len(hist)}条"
             _log(f"yahoo:{symbol}", "success", results[symbol])
         except Exception as exc:
-            results[symbol] = f"失败：{exc}"
-            _log(f"yahoo:{symbol}", "error", exc)
+            error = _safe_error(exc)
+            results[symbol] = f"失败：{error}"
+            _log(f"yahoo:{symbol}", "error", error)
     return results
 
 def fetch_fred_series():
@@ -92,8 +99,9 @@ def fetch_fred_series():
             results[series_id] = f"成功：{len(observations)}条"
             _log(f"fred:{series_id}", "success", results[series_id])
         except Exception as exc:
-            results[series_id] = f"失败：{exc}"
-            _log(f"fred:{series_id}", "error", exc)
+            error = _safe_error(exc)
+            results[series_id] = f"失败：{error}"
+            _log(f"fred:{series_id}", "error", error)
     return results
 
 def run_daily_update():

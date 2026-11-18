@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from sqlalchemy import create_engine, String, Float, DateTime, Integer, Text, UniqueConstraint, Index
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 from config import DB_PATH
+from security import redact_secrets
 
 engine = create_engine(
     f"sqlite:///{DB_PATH}",
@@ -76,3 +77,16 @@ def init_db():
     with engine.connect() as conn:
         conn.exec_driver_sql("PRAGMA journal_mode=WAL")
         conn.exec_driver_sql("PRAGMA busy_timeout=5000")
+    _sanitize_collection_logs()
+
+
+def _sanitize_collection_logs():
+    with SessionLocal() as session:
+        changed = False
+        for log in session.query(CollectionLog).all():
+            safe_message = redact_secrets(log.message)
+            if safe_message != log.message:
+                log.message = safe_message
+                changed = True
+        if changed:
+            session.commit()
