@@ -51,6 +51,41 @@ class YahooFinanceProvider:
         )
 
 
+class YahooChartProvider:
+    name = "Yahoo Finance Chart"
+    api_url = "https://query1.finance.yahoo.com/v8/finance/chart"
+
+    def __init__(self, tickers: dict[str, str], http_get=requests.get):
+        self.tickers = tickers
+        self.http_get = http_get
+
+    def supports(self, symbol: str) -> bool:
+        return symbol in self.tickers
+
+    def fetch_daily(self, symbol: str, period: str) -> MarketDataResult:
+        ticker = self.tickers[symbol]
+        response = self.http_get(
+            f"{self.api_url}/{requests.utils.quote(ticker, safe='')}",
+            params={"range": period, "interval": "1d", "events": "history"},
+            headers={"User-Agent": "Mozilla/5.0"},
+            timeout=30,
+        )
+        response.raise_for_status()
+        payload = response.json().get("chart", {})
+        if payload.get("error"):
+            raise MarketDataUnavailable(str(payload["error"]))
+        results = payload.get("result") or []
+        if not results:
+            raise MarketDataUnavailable(f"{ticker} 未返回行情")
+        frame = _normalize_yahoo_chart(results[0])
+        if frame.empty:
+            raise MarketDataUnavailable(f"{ticker} 未返回有效日线")
+        return MarketDataResult(
+            frame=frame,
+            source=f"{self.name} ({ticker})",
+        )
+
+
 class FREDMarketProvider:
     name = "FRED"
     api_url = "https://api.stlouisfed.org/fred/series/observations"
@@ -120,6 +155,30 @@ def _normalize_yahoo_history(history: pd.DataFrame) -> pd.DataFrame:
         }
     )
     return normalized.dropna(subset=["close"]).reset_index(drop=True)
+
+
+def _normalize_yahoo_chart(result: dict) -> pd.DataFrame:
+    timestamps = result.get("timestamp") or []
+    quotes = result.get("indicators", {}).get("quote") or []
+    if not timestamps or not quotes:
+        return pd.DataFrame(columns=["date", "open", "high", "low", "close", "volume"])
+    quote = quotes[0]
+    timezone_name = result.get("meta", {}).get("exchangeTimezoneName", "UTC")
+    try:
+        dates = pd.to_datetime(timestamps, unit="s", utc=True).tz_convert(timezone_name)
+    except (KeyError, TypeError):
+        dates = pd.to_datetime(timestamps, unit="s", utc=True)
+    frame = pd.DataFrame(
+        {
+            "date": dates.date.astype(str),
+            "open": quote.get("open"),
+            "high": quote.get("high"),
+            "low": quote.get("low"),
+            "close": quote.get("close"),
+            "volume": quote.get("volume"),
+        }
+    )
+    return frame.dropna(subset=["close"]).reset_index(drop=True)
 
 
 def _normalize_fred_observations(observations) -> pd.DataFrame:

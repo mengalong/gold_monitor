@@ -8,7 +8,9 @@ from market_data import (
     MarketDataProviderChain,
     MarketDataResult,
     MarketDataUnavailable,
+    YahooChartProvider,
     _normalize_fred_observations,
+    _normalize_yahoo_chart,
     _normalize_yahoo_history,
     _observation_start,
 )
@@ -79,6 +81,63 @@ def test_yahoo_history_is_normalized_to_internal_columns():
 
     assert result.columns.tolist() == ["date", "open", "high", "low", "close", "volume"]
     assert result["date"].tolist() == ["2026-01-02", "2026-01-03"]
+
+
+def test_yahoo_chart_is_normalized_and_missing_close_is_removed():
+    result = _normalize_yahoo_chart(
+        {
+            "meta": {"exchangeTimezoneName": "America/New_York"},
+            "timestamp": [1767358800, 1767618000],
+            "indicators": {
+                "quote": [
+                    {
+                        "open": [2500.0, None],
+                        "high": [2520.0, None],
+                        "low": [2490.0, None],
+                        "close": [2510.0, None],
+                        "volume": [100.0, None],
+                    }
+                ]
+            },
+        }
+    )
+
+    assert len(result) == 1
+    assert result.iloc[0]["close"] == 2510.0
+
+
+def test_yahoo_chart_provider_builds_encoded_request():
+    class Response:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {
+                "chart": {
+                    "result": [
+                        {
+                            "meta": {"exchangeTimezoneName": "UTC"},
+                            "timestamp": [1767312000],
+                            "indicators": {"quote": [{"close": [2510.0]}]},
+                        }
+                    ],
+                    "error": None,
+                }
+            }
+
+    calls = []
+
+    def fake_get(url, **kwargs):
+        calls.append((url, kwargs))
+        return Response()
+
+    provider = YahooChartProvider({"GOLD": "GC=F"}, http_get=fake_get)
+    result = provider.fetch_daily("GOLD", "2y")
+
+    assert calls[0][0].endswith("/GC%3DF")
+    assert calls[0][1]["params"]["range"] == "2y"
+    assert result.source == "Yahoo Finance Chart (GC=F)"
+    assert result.frame.iloc[0]["close"] == 2510.0
 
 
 def test_fred_observations_skip_missing_values():
