@@ -80,6 +80,41 @@ class PortfolioSnapshot(Base):
     note: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
 
+
+class SignalSnapshot(Base):
+    __tablename__ = "signal_snapshots"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    date: Mapped[str] = mapped_column(String(10), index=True)
+    code: Mapped[str] = mapped_column(String(40), index=True)
+    direction: Mapped[str] = mapped_column(String(20))
+    strength: Mapped[int] = mapped_column(Integer)
+    reason: Mapped[str] = mapped_column(Text)
+    data_date: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    data_status: Mapped[str] = mapped_column(String(20))
+    metrics_json: Mapped[str] = mapped_column(Text, default="{}")
+    rule_version: Mapped[str] = mapped_column(String(20))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
+    __table_args__ = (
+        UniqueConstraint("date", "code", name="uq_signal_date_code"),
+    )
+
+
+class AdviceRecord(Base):
+    __tablename__ = "advice_records"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    date: Mapped[str] = mapped_column(String(10), unique=True, index=True)
+    action: Mapped[str] = mapped_column(String(20))
+    suggested_amount: Mapped[float] = mapped_column(Float)
+    budget_ratio: Mapped[float] = mapped_column(Float)
+    confidence: Mapped[float] = mapped_column(Float)
+    reasons_json: Mapped[str] = mapped_column(Text, default="[]")
+    opposing_factors_json: Mapped[str] = mapped_column(Text, default="[]")
+    invalidation_json: Mapped[str] = mapped_column(Text, default="[]")
+    signal_counts_json: Mapped[str] = mapped_column(Text, default="{}")
+    data_date: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    rule_version: Mapped[str] = mapped_column(String(20))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
+
 class CollectionLog(Base):
     __tablename__ = "collection_logs"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)

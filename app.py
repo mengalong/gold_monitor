@@ -11,6 +11,7 @@ from config import REPORTS_DIR, validate_settings
 from instruments import DOLLAR_INDEX, GOLD_FUTURES, SGE_AU9999, USD_CNY
 from data_quality import assess_core_data_quality, collect_freshness
 from portfolio import PortfolioContext, latest_portfolio, save_portfolio
+from advice import generate_current_advice, refresh_and_save_advice, save_advice_snapshot
 
 st.set_page_config(page_title="Gold Monitor", page_icon="🟡", layout="wide")
 setting_errors = validate_settings()
@@ -28,6 +29,7 @@ with st.sidebar:
     if st.button("立即更新行情与宏观数据", use_container_width=True):
         with st.spinner("正在采集数据……"):
             result = run_daily_update()
+            refresh_and_save_advice()
         st.success("采集任务已执行")
         for k, v in result.items():
             st.write(f"**{k}**：{v}")
@@ -38,6 +40,57 @@ with st.sidebar:
         path.write_text(report, encoding="utf-8")
         st.success(f"报告已生成：{path.name}")
         st.download_button("下载周报 Markdown", report, file_name="gold_weekly_report.md")
+
+advice, core_signals, advice_quality = generate_current_advice()
+st.subheader("今日投资建议")
+if advice.action == "暂停加仓":
+    st.error(f"当前建议：{advice.action}")
+elif advice.action == "持有观察":
+    st.warning(f"当前建议：{advice.action}")
+else:
+    st.success(f"当前建议：{advice.action}，建议金额 ¥{advice.suggested_amount:,.0f}")
+
+a1, a2, a3, a4 = st.columns(4)
+a1.metric("建议动作", advice.action)
+a2.metric("建议金额", f"¥{advice.suggested_amount:,.0f}")
+a3.metric("数据与信号完整度", f"{advice.confidence:.1f}%")
+a4.metric("规则版本", advice.rule_version, advice.data_date or "暂无数据日期")
+
+direction_labels = {
+    "bullish": "🟢 偏多",
+    "neutral": "🟡 中性",
+    "bearish": "🔴 偏空",
+    "unavailable": "⚪ 不可用",
+}
+signal_columns = st.columns(5)
+for column, signal in zip(signal_columns, core_signals):
+    column.metric(signal.label, direction_labels[signal.direction])
+    column.caption(signal.reason)
+
+r1, r2 = st.columns(2)
+with r1:
+    st.markdown("**主要理由**")
+    for reason in advice.reasons or ("当前没有可用理由",):
+        st.write(f"- {reason}")
+with r2:
+    st.markdown("**反对因素 / 缺失项**")
+    for factor in advice.opposing_factors or ("暂无",):
+        st.write(f"- {factor}")
+with st.expander("建议失效条件与审计信息"):
+    for condition in advice.invalidation_conditions:
+        st.write(f"- {condition}")
+    st.caption(
+        f"数据质量门：{'通过' if advice_quality.ready else '未通过'}；"
+        f"偏多 {advice.signal_counts['bullish']} / 中性 {advice.signal_counts['neutral']} / "
+        f"偏空 {advice.signal_counts['bearish']} / 不可用 {advice.signal_counts['unavailable']}。"
+    )
+if latest_portfolio() is None:
+    st.info("尚未配置个人持仓；即使出现买入信号，系统也会因无法验证配置上限而暂停加仓。请在“数据管理”页填写。")
+if st.button("保存今日正式建议"):
+    save_advice_snapshot(advice, core_signals)
+    st.success("今日信号与建议快照已保存")
+
+st.divider()
 
 tabs = st.tabs(["市场总览", "宏观经济", "技术分析", "国内金价", "数据管理"])
 

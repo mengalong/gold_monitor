@@ -6,6 +6,7 @@ from collectors import run_daily_update
 from analytics import build_score
 from reporting import generate_weekly_report
 from config import REPORTS_DIR, TIMEZONE, ensure_valid_settings
+from advice import refresh_and_save_advice
 
 def daily_job():
     print("开始执行每日黄金数据更新")
@@ -13,6 +14,8 @@ def daily_job():
     for name, message in result.items():
         print(f"{name}: {message}")
     print("评分：", build_score())
+    advice, _, _ = refresh_and_save_advice()
+    print("建议：", advice.to_dict())
 
 def weekly_job():
     print("开始生成每周黄金市场报告")
