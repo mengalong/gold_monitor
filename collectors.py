@@ -34,6 +34,16 @@ def _log(task, status, message):
 def _safe_error(exc):
     return redact_secrets(exc, (FRED_API_KEY,))
 
+
+def _latest_quote_date(symbol):
+    with SessionLocal() as session:
+        return session.scalar(
+            select(MarketQuote.date)
+            .where(MarketQuote.symbol == symbol)
+            .order_by(MarketQuote.date.desc())
+            .limit(1)
+        )
+
 def fetch_market_quotes(period="2y", provider_chain=None):
     provider_chain = provider_chain or DEFAULT_MARKET_PROVIDER_CHAIN
     results = {}
@@ -68,8 +78,15 @@ def fetch_market_quotes(period="2y", provider_chain=None):
             _log(f"market:{symbol}", "success", results[symbol])
         except Exception as exc:
             error = _safe_error(exc)
-            results[symbol] = f"失败：{error}"
-            _log(f"market:{symbol}", "error", error)
+            latest_date = _latest_quote_date(symbol)
+            if latest_date:
+                results[symbol] = (
+                    f"降级：采集失败，保留最近有效数据 {latest_date}；原因：{error}"
+                )
+                _log(f"market:{symbol}", "degraded", results[symbol])
+            else:
+                results[symbol] = f"失败：无可用历史数据；原因：{error}"
+                _log(f"market:{symbol}", "error", results[symbol])
     return results
 
 

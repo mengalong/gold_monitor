@@ -9,6 +9,7 @@ from collectors import run_daily_update
 from reporting import generate_weekly_report
 from config import REPORTS_DIR, validate_settings
 from instruments import DOLLAR_INDEX, GOLD_FUTURES, USD_CNY
+from data_quality import collect_freshness
 
 st.set_page_config(page_title="Gold Monitor", page_icon="🟡", layout="wide")
 setting_errors = validate_settings()
@@ -115,6 +116,24 @@ with tabs[3]:
 
 with tabs[4]:
     st.subheader("数据导入与采集日志")
+    freshness = collect_freshness()
+    freshness_labels = {"fresh": "正常", "stale": "过期", "missing": "缺失"}
+    st.markdown("#### 数据新鲜度")
+    st.dataframe(
+        [
+            {
+                "数据": item.label,
+                "代码": item.code,
+                "最新日期": item.latest_date or "—",
+                "距今天数": item.age_days if item.age_days is not None else "—",
+                "允许天数": item.max_age_days,
+                "状态": freshness_labels[item.status],
+            }
+            for item in freshness
+        ],
+        use_container_width=True,
+        hide_index=True,
+    )
     st.markdown("CSV格式说明见项目 README。")
     dataset = st.selectbox("导入数据类型", ["au9999", "etf", "cot", "central_bank"])
     uploaded = st.file_uploader("选择CSV文件", type=["csv"])
