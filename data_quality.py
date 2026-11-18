@@ -4,7 +4,7 @@ from datetime import date
 from sqlalchemy import func, select
 
 from database import MacroIndicator, MarketQuote, SessionLocal
-from instruments import DOLLAR_INDEX, GOLD_FUTURES, USD_CNY
+from instruments import DOLLAR_INDEX, GOLD_FUTURES, SGE_AU9999, USD_CNY
 
 
 @dataclass(frozen=True)
@@ -33,6 +33,7 @@ DEFAULT_FRESHNESS_RULES = (
     FreshnessRule("market", GOLD_FUTURES, "COMEX黄金期货", 3),
     FreshnessRule("market", DOLLAR_INDEX, "美元指数", 3),
     FreshnessRule("market", USD_CNY, "USD/CNY", 3),
+    FreshnessRule("market", SGE_AU9999, "上金所 Au99.99", 3),
     FreshnessRule("macro", "DFII10", "美国10年期实际利率", 4),
     FreshnessRule("macro", "DGS10", "美国10年期名义利率", 4),
     FreshnessRule("macro", "CPIAUCSL", "美国CPI", 45),

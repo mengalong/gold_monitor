@@ -8,7 +8,7 @@ from indicators import add_technical_indicators
 from collectors import run_daily_update
 from reporting import generate_weekly_report
 from config import REPORTS_DIR, validate_settings
-from instruments import DOLLAR_INDEX, GOLD_FUTURES, USD_CNY
+from instruments import DOLLAR_INDEX, GOLD_FUTURES, SGE_AU9999, USD_CNY
 from data_quality import collect_freshness
 
 st.set_page_config(page_title="Gold Monitor", page_icon="🟡", layout="wide")
@@ -100,19 +100,26 @@ with tabs[3]:
     st.write("国内理论价 = 国际金价 × USD/CNY ÷ 31.1034768")
     gold = quotes_df(GOLD_FUTURES)
     fx = quotes_df(USD_CNY)
+    sge = quotes_df(SGE_AU9999)
     domestic = imported_df("au9999")
     if not gold.empty and not fx.empty:
         g, f = gold.iloc[-1], fx.iloc[-1]
         theory = calculate_domestic_theoretical(float(g["close"]), float(f["close"]))
         st.metric("国内理论金价（参考）", f"¥{theory:,.2f}/克")
         st.caption(f"国际行情日期：{g['date']}；汇率日期：{f['date']}。两者日期可能不一致。")
-        if not domestic.empty:
+        if not sge.empty:
+            actual = float(sge.iloc[-1]["close"])
+            st.metric("上金所 Au99.99", f"¥{actual:,.2f}/克", f"溢价 ¥{actual-theory:,.2f}/克")
+            st.caption(f"Au99.99 行情日期：{sge.iloc[-1]['date']}；来源：上海黄金交易所。")
+        elif not domestic.empty:
             actual = domestic.iloc[-1]["value1"]
             st.metric("Au99.99导入价格", f"¥{actual:,.2f}/克", f"溢价 ¥{actual-theory:,.2f}/克")
     else:
         st.info("需要先有国际黄金与USD/CNY行情。Au99.99可在数据管理页导入。")
     if not domestic.empty:
         st.dataframe(domestic.rename(columns={"value1":"close_CNY_g"}), use_container_width=True, hide_index=True)
+    if not sge.empty:
+        st.dataframe(sge.tail(60), use_container_width=True, hide_index=True)
 
 with tabs[4]:
     st.subheader("数据导入与采集日志")
