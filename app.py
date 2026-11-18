@@ -9,7 +9,7 @@ from collectors import run_daily_update
 from reporting import generate_weekly_report
 from config import REPORTS_DIR, validate_settings
 from instruments import DOLLAR_INDEX, GOLD_FUTURES, SGE_AU9999, USD_CNY
-from data_quality import collect_freshness
+from data_quality import assess_core_data_quality, collect_freshness
 
 st.set_page_config(page_title="Gold Monitor", page_icon="🟡", layout="wide")
 setting_errors = validate_settings()
@@ -123,8 +123,16 @@ with tabs[3]:
 
 with tabs[4]:
     st.subheader("数据导入与采集日志")
+    quality = assess_core_data_quality()
     freshness = collect_freshness()
     freshness_labels = {"fresh": "正常", "stale": "过期", "missing": "缺失"}
+    if quality.ready:
+        st.success(f"核心数据质量门：通过（检查通过率 {quality.confidence:.1f}%）")
+    else:
+        st.error(f"核心数据质量门：未通过（检查通过率 {quality.confidence:.1f}%）")
+        with st.expander("查看阻断原因", expanded=True):
+            for blocker in quality.blockers:
+                st.write(f"- {blocker}")
     st.markdown("#### 数据新鲜度")
     st.dataframe(
         [
@@ -137,6 +145,21 @@ with tabs[4]:
                 "状态": freshness_labels[item.status],
             }
             for item in freshness
+        ],
+        use_container_width=True,
+        hide_index=True,
+    )
+    st.markdown("#### 历史覆盖度")
+    st.dataframe(
+        [
+            {
+                "数据": item.label,
+                "观察窗口（天）": item.window_days,
+                "已有条数": item.available_points,
+                "最低条数": item.minimum_points,
+                "状态": "充足" if item.status == "sufficient" else "不足",
+            }
+            for item in quality.coverage
         ],
         use_container_width=True,
         hide_index=True,

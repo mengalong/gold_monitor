@@ -12,6 +12,7 @@
 - 美元指数（DX-Y.NYB）行情采集（如数据源可用）。
 - USD/CNY 汇率优先采集 Yahoo Finance 参考行情，失败时降级到 FRED `DEXCHUS` 官方序列。
 - 上海黄金交易所 Au99.99 官方日行情采集，按月拆分并自动处理分页。
+- 核心数据新鲜度和历史覆盖度质量门；数据不足时列出阻断原因。
 - FRED 宏观序列采集：DFII10、DGS10、CPIAUCSL、PCEPILFE；需要 FRED API Key。
 - SQLite 原始行情、宏观数据、指标、评分、采集日志持久化。
 - 技术指标：MA20/60/120/250、RSI14、MACD、布林带、ATR14。
