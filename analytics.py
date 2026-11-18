@@ -1,6 +1,7 @@
 import pandas as pd
 from sqlalchemy import select
 from database import SessionLocal, MarketQuote, MacroIndicator, ImportedDatum, ScoreRecord
+from instruments import DOLLAR_INDEX, GOLD_FUTURES
 
 OZ_TO_GRAM = 31.1034768
 
@@ -26,8 +27,8 @@ def calculate_domestic_theoretical(international_usd, usdcny):
 
 def build_score():
     # Transparent starter heuristic. Not a backtested trading signal.
-    gold = quotes_df("XAUUSD")
-    dxy = quotes_df("DXY")
+    gold = quotes_df(GOLD_FUTURES)
+    dxy = quotes_df(DOLLAR_INDEX)
     real = macro_df("DFII10")
     if gold.empty:
         return None

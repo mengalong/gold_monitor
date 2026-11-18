@@ -1,7 +1,8 @@
 from datetime import datetime, timezone
-from sqlalchemy import create_engine, String, Float, DateTime, Integer, Text, UniqueConstraint, Index
+from sqlalchemy import create_engine, String, Float, DateTime, Integer, Text, UniqueConstraint, Index, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 from config import DB_PATH
+from instruments import GOLD_FUTURES, GOLD_SPOT
 from security import redact_secrets
 
 engine = create_engine(
@@ -9,6 +10,10 @@ engine = create_engine(
     connect_args={"check_same_thread": False, "timeout": 30},
 )
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
+
+
+def utc_now():
+    return datetime.now(timezone.utc)
 
 class Base(DeclarativeBase):
     pass
@@ -24,7 +29,7 @@ class MarketQuote(Base):
     close: Mapped[float] = mapped_column(Float)
     volume: Mapped[float | None] = mapped_column(Float, nullable=True)
     source: Mapped[str] = mapped_column(String(80), default="Yahoo Finance")
-    fetched_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
     __table_args__ = (UniqueConstraint("symbol", "date", name="uq_quote_symbol_date"),)
 
 class MacroIndicator(Base):
@@ -35,7 +40,7 @@ class MacroIndicator(Base):
     value: Mapped[float] = mapped_column(Float)
     units: Mapped[str] = mapped_column(String(40), default="")
     source: Mapped[str] = mapped_column(String(80), default="FRED")
-    fetched_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
     __table_args__ = (UniqueConstraint("series_id", "date", name="uq_macro_series_date"),)
 
 class ImportedDatum(Base):
@@ -49,7 +54,7 @@ class ImportedDatum(Base):
     value3: Mapped[float | None] = mapped_column(Float, nullable=True)
     value4: Mapped[float | None] = mapped_column(Float, nullable=True)
     source: Mapped[str] = mapped_column(String(100), default="CSV import")
-    fetched_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
     __table_args__ = (UniqueConstraint("dataset", "date", "key", name="uq_import_dataset_date_key"),)
 
 class ScoreRecord(Base):
@@ -69,7 +74,7 @@ class CollectionLog(Base):
     task: Mapped[str] = mapped_column(String(100))
     status: Mapped[str] = mapped_column(String(20))
     message: Mapped[str] = mapped_column(Text, default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
 
 def init_db():
     Base.metadata.create_all(engine)
@@ -77,7 +82,31 @@ def init_db():
     with engine.connect() as conn:
         conn.exec_driver_sql("PRAGMA journal_mode=WAL")
         conn.exec_driver_sql("PRAGMA busy_timeout=5000")
+    _migrate_legacy_gold_symbol()
     _sanitize_collection_logs()
+
+
+def _migrate_legacy_gold_symbol(session_factory=SessionLocal):
+    with session_factory() as session:
+        legacy_rows = session.scalars(
+            select(MarketQuote).where(
+                MarketQuote.symbol == GOLD_SPOT,
+                MarketQuote.source.contains("GC=F"),
+            )
+        ).all()
+        for quote in legacy_rows:
+            existing = session.scalar(
+                select(MarketQuote).where(
+                    MarketQuote.symbol == GOLD_FUTURES,
+                    MarketQuote.date == quote.date,
+                )
+            )
+            if existing:
+                session.delete(quote)
+            else:
+                quote.symbol = GOLD_FUTURES
+        if legacy_rows:
+            session.commit()
 
 
 def _sanitize_collection_logs():

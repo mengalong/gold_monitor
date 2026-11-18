@@ -8,6 +8,7 @@ from indicators import add_technical_indicators
 from collectors import run_daily_update
 from reporting import generate_weekly_report
 from config import REPORTS_DIR, validate_settings
+from instruments import DOLLAR_INDEX, GOLD_FUTURES, USD_CNY
 
 st.set_page_config(page_title="Gold Monitor", page_icon="🟡", layout="wide")
 setting_errors = validate_settings()
@@ -39,8 +40,8 @@ with st.sidebar:
 tabs = st.tabs(["市场总览", "宏观经济", "技术分析", "国内金价", "数据管理"])
 
 with tabs[0]:
-    gold = quotes_df("XAUUSD")
-    dxy = quotes_df("DXY")
+    gold = quotes_df(GOLD_FUTURES)
+    dxy = quotes_df(DOLLAR_INDEX)
     real = macro_df("DFII10")
     c1,c2,c3,c4 = st.columns(4)
     c1.metric("黄金期货代理价格", f"{gold.iloc[-1]['close']:,.2f}" if not gold.empty else "暂无数据",
@@ -49,7 +50,7 @@ with tabs[0]:
               f"{dxy.iloc[-1]['date']}" if not dxy.empty else None)
     c3.metric("美国10年期实际利率", f"{real.iloc[-1]['value']:.2f}%" if not real.empty else "暂无数据",
               f"{real.iloc[-1]['date']}" if not real.empty else None)
-    usdcny = quotes_df("USDCNY")
+    usdcny = quotes_df(USD_CNY)
     c4.metric("USD/CNY参考行情", f"{usdcny.iloc[-1]['close']:.4f}" if not usdcny.empty else "暂无数据",
               f"{usdcny.iloc[-1]['date']}" if not usdcny.empty else None)
     if not gold.empty:
@@ -96,8 +97,8 @@ with tabs[2]:
 with tabs[3]:
     st.subheader("国内黄金价格")
     st.write("国内理论价 = 国际金价 × USD/CNY ÷ 31.1034768")
-    gold = quotes_df("XAUUSD")
-    fx = quotes_df("USDCNY")
+    gold = quotes_df(GOLD_FUTURES)
+    fx = quotes_df(USD_CNY)
     domestic = imported_df("au9999")
     if not gold.empty and not fx.empty:
         g, f = gold.iloc[-1], fx.iloc[-1]

@@ -1,6 +1,7 @@
 from datetime import date, timedelta
 from analytics import quotes_df, macro_df, imported_df
 from indicators import add_technical_indicators
+from instruments import DOLLAR_INDEX, GOLD_FUTURES
 
 def _latest_change(df, value_col="close", periods=5):
     if df.empty:
@@ -13,8 +14,8 @@ def _latest_change(df, value_col="close", periods=5):
 def generate_weekly_report():
     end = date.today()
     start = end - timedelta(days=7)
-    gold = quotes_df("XAUUSD")
-    dxy = quotes_df("DXY")
+    gold = quotes_df(GOLD_FUTURES)
+    dxy = quotes_df(DOLLAR_INDEX)
     real = macro_df("DFII10")
     lines = [
         f"# 黄金市场周报（{start.isoformat()} 至 {end.isoformat()}）",

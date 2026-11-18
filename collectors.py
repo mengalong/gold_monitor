@@ -5,12 +5,13 @@ import yfinance as yf
 from sqlalchemy import select
 from database import SessionLocal, MarketQuote, MacroIndicator, CollectionLog
 from config import FRED_API_KEY
+from instruments import DOLLAR_INDEX, GOLD_FUTURES, USD_CNY
 from security import redact_secrets
 
 YAHOO_SYMBOLS = {
-    "XAUUSD": "GC=F",       # COMEX gold futures proxy, not spot XAU/USD
-    "DXY": "DX-Y.NYB",      # Yahoo symbol availability may vary
-    "USDCNY": "CNY=X",      # Indicative market quote
+    GOLD_FUTURES: "GC=F",    # COMEX gold futures proxy, not spot XAU/USD
+    DOLLAR_INDEX: "DX-Y.NYB",  # Yahoo symbol availability may vary
+    USD_CNY: "CNY=X",        # Indicative market quote
 }
 FRED_SERIES = {
     "DFII10": "percent",
